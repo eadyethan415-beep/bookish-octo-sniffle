@@ -1,0 +1,233 @@
+-- meter LocalScript (cleaned)
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local camera = workspace.CurrentCamera
+
+local screenGui = script.Parent
+local mainFrame = screenGui:WaitForChild("Frame")
+local container = mainFrame:WaitForChild("container")
+local bar = container:WaitForChild("bar")
+local promptLabel = screenGui:WaitForChild("TextLabel") -- the big "R - Faster" label
+local whiteFlash = screenGui:WaitForChild("white")
+local heartbeat = script:WaitForChild("Heartbeat")
+
+-- Remotes (make sure these exist)
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local changeFunSpeed = remotes:WaitForChild("ChangeFunSpeed")
+local showPrompt = remotes:WaitForChild("ShowPrompt")
+
+-- Mobile button (optional)
+local mobileButtons = player.PlayerGui:FindFirstChild("mobileButtons")
+local rButton = mobileButtons and mobileButtons:FindFirstChild("R")
+
+-- Tween infos
+local barTweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local promptTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local flashTweenInfo = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+
+local toggle = false
+local prevMeter = 0
+local funState = 1
+local newMeter = 0
+
+-- Mobile shiftlock
+if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+	local shiftlock = player.PlayerGui:FindFirstChild("Shiftlock")
+	if shiftlock then
+		shiftlock.Enabled = true
+	end
+end
+
+-------------------------------------------------
+-- Bar fill animation
+-------------------------------------------------
+character:GetAttributeChangedSignal("funMeter"):Connect(function()
+	newMeter = character:GetAttribute("funMeter") or 0
+
+	TweenService:Create(bar, barTweenInfo, {
+		Size = UDim2.new(1, 0, newMeter, 0)
+	}):Play()
+
+	if character:GetAttribute("doing") then
+		local prevRounded = math.round(prevMeter * 100)
+		local newRounded = math.round(newMeter * 100)
+
+		if newMeter >= 1 and prevRounded == 98 then
+			showPromptText("R - RELEASE")
+			funState += 1
+		elseif newMeter >= 0.6 and prevRounded == 60 then
+			showPromptText("R - Faster")
+			funState += 1
+		elseif newMeter >= 0.26 and prevRounded == 26 then
+			showPromptText("R - Faster")
+			funState += 1
+		end
+	else
+		hidePromptText()
+	end
+
+	funState = math.clamp(funState, 1, 4)
+	prevMeter = newMeter
+end)
+
+character:GetAttributeChangedSignal("doing"):Connect(function()
+	if not character:GetAttribute("doing") then
+		hidePromptText()
+	end
+end)
+
+-------------------------------------------------
+-- Prompt helpers
+-------------------------------------------------
+function showPromptText(text)
+	promptLabel.Visible = true
+	promptLabel.Text = text
+	toggle = true
+
+	TweenService:Create(promptLabel, promptTweenInfo, {TextTransparency = 0}):Play()
+	TweenService:Create(promptLabel, promptTweenInfo, {TextStrokeTransparency = 0}):Play()
+
+	local img = promptLabel:FindFirstChild("ImageLabel")
+	if img then
+		TweenService:Create(img, promptTweenInfo, {ImageTransparency = 0.6}):Play()
+	end
+end
+
+function hidePromptText()
+	toggle = false
+	promptLabel.Text = ""
+
+	local img = promptLabel:FindFirstChild("ImageLabel")
+	if img then
+		TweenService:Create(img, promptTweenInfo, {ImageTransparency = 1}):Play()
+	end
+
+	TweenService:Create(promptLabel, promptTweenInfo, {TextTransparency = 1}):Play()
+	TweenService:Create(promptLabel, promptTweenInfo, {TextStrokeTransparency = 1}):Play()
+
+	task.delay(0.45, function()
+		promptLabel.Visible = false
+	end)
+end
+
+-------------------------------------------------
+-- The "funny" effect (FOV + white flash + sound)
+-------------------------------------------------
+local function theFunny(doWhiteFlash)
+	hidePromptText()
+
+	-- FOV punch
+	local originalFOV = camera.FieldOfView
+	camera.FieldOfView = originalFOV + 20
+	TweenService:Create(camera, promptTweenInfo, {
+		FieldOfView = originalFOV
+	}):Play()
+
+	heartbeat:Play()
+
+	if doWhiteFlash then
+		whiteFlash.Visible = true
+		whiteFlash.ImageTransparency = 0
+
+		local t = TweenService:Create(whiteFlash, flashTweenInfo, {
+			ImageTransparency = 1
+		})
+		t:Play()
+
+		for _, v in whiteFlash:GetDescendants() do
+			if v:IsA("ImageLabel") then
+				v.ImageTransparency = 0
+				TweenService:Create(v, flashTweenInfo, {
+					ImageTransparency = 1
+				}):Play()
+			end
+		end
+
+		t.Completed:Wait()
+		whiteFlash.Visible = false
+	end
+end
+
+-------------------------------------------------
+-- Input
+-------------------------------------------------
+local function onRelease()
+	if not toggle then return end
+
+	if newMeter >= 1 then
+		theFunny(true)
+		task.delay(3, function()
+			theFunny(true)
+		end)
+	else
+		theFunny(false)
+	end
+
+	changeFunSpeed:FireServer(funState)
+
+	if funState == 4 then
+		funState = 1
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.R then
+		onRelease()
+	end
+end)
+
+if rButton then
+	rButton.Activated:Connect(onRelease)
+end
+
+-- Optional remote for other systems to enable/disable prompts
+showPrompt.OnClientEvent:Connect(function(prompt, enabled)
+	if typeof(prompt) == "table" then
+		for _, p in prompt do
+			p.Enabled = enabled
+		end
+	elseif prompt then
+		prompt.Enabled = enabled
+	end
+end)
+
+-------------------------------------------------
+-- Idle animation (bob + slight rotate)
+-------------------------------------------------
+local vertTween = TweenService:Create(mainFrame, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+	Position = UDim2.new(0, 30, 0.55, 0)
+})
+local rotTween = TweenService:Create(mainFrame, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+	Rotation = -3
+})
+
+vertTween:Play()
+task.wait(0.6)
+rotTween:Play()
+
+-- Slight random shake on the prompt text
+task.spawn(function()
+	local baseX, baseY = 30, 0
+	local imgBaseX, imgBaseY = -0.51, -0.94
+
+	while true do
+		if promptLabel.Visible then
+			local randX = math.random(-8, 8)
+			local randY = math.random(-6, 6)
+			promptLabel.Position = UDim2.new(0, baseX + randX, 0.85, baseY + randY)
+
+			local img = promptLabel:FindFirstChild("ImageLabel")
+			if img then
+				img.Position = UDim2.new(imgBaseX + math.random(-5, 5) / 100, 0, imgBaseY + math.random(-5, 5) / 100, 0)
+			end
+		end
+		task.wait(0.05)
+	end
+end)
