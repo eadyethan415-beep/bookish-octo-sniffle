@@ -1,0 +1,524 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+-- ==========================================
+-- CONFIGURATION: PUT YOUR 12 ANIMATION IDS HERE
+-- ==========================================
+local EMOTES = {
+	{ Name = "bang male", AnimationId = "rbxassetid://83052081218673", Looped = true },
+	{ Name = "get banged", AnimationId = "rbxassetid://108656704819058", Looped = true },
+	{ Name = "male blow job", AnimationId = "rbxassetid://85315638387885", Looped = true },
+	{ Name = "suck it", AnimationId = "rbxassetid://104097254786806", Looped = true },
+	{ Name = "get rided cowgirl", AnimationId = "rbxassetid://108686668593767", Looped = true },
+	{ Name = "riding it", AnimationId = "rbxassetid://134562950181232", Looped = true },
+	{ Name = "cowgirl2.0", AnimationId = "rbxassetid://85587893059829", Looped = true },
+	{ Name = "keeping them on", AnimationId = "rbxassetid://137099299882997", Looped = true },
+	-- Add your 4 new ones below (replace the AnimationIds)
+	{ Name = "standing m", AnimationId = "rbxassetid://94493721797430", Looped = true },
+	{ Name = "standing f", AnimationId = "rbxassetid://71127925942789", Looped = true },
+	{ Name = "stetch f", AnimationId = "rbxassetid://106176435228320", Looped = true },
+	{ Name = "stretch m", AnimationId = "rbxassetid://84992975467721", Looped = true },
+}
+local TOGGLE_KEY = Enum.KeyCode.G -- Keybind to show/hide the panel
+-- ==========================================
+local currentTrack = nil
+local activeIndex = nil
+local playbackSpeed = 1.0
+local uiButtons = {}
+-- Stop active animation cleanly
+local function stopCurrentEmote()
+	if currentTrack then
+		currentTrack:Stop(0.2)
+		currentTrack:Destroy()
+		currentTrack = nil
+	end
+	activeIndex = nil
+	-- Reset button visuals
+	for idx, btnData in pairs(uiButtons) do
+		TweenService:Create(btnData.Button, TweenInfo.new(0.2), {
+			BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+		}):Play()
+		TweenService:Create(btnData.Stroke, TweenInfo.new(0.2), {
+			Color = Color3.fromRGB(0, 0, 0) -- Inner rim black
+		}):Play()
+		btnData.Status.Text = "PLAY"
+		btnData.Status.TextColor3 = Color3.fromRGB(135, 145, 160)
+	end
+end
+-- Play or toggle an emote by index
+local function toggleEmote(index)
+	if activeIndex == index then
+		stopCurrentEmote()
+		return
+	end
+	stopCurrentEmote()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if not animator then return end
+	local emoteData = EMOTES[index]
+	local anim = Instance.new("Animation")
+	anim.AnimationId = emoteData.AnimationId
+	local success, track = pcall(function()
+		return animator:LoadAnimation(anim)
+	end)
+	if success and track then
+		track.Priority = Enum.AnimationPriority.Action
+		track.Looped = emoteData.Looped
+		track:Play(0.2)
+		track:AdjustSpeed(playbackSpeed)
+		currentTrack = track
+		activeIndex = index
+		-- Highlight active button
+		local btnData = uiButtons[index]
+		if btnData then
+			TweenService:Create(btnData.Button, TweenInfo.new(0.2), {
+				BackgroundColor3 = Color3.fromRGB(36, 46, 66)
+			}):Play()
+			TweenService:Create(btnData.Stroke, TweenInfo.new(0.2), {
+				Color = Color3.fromRGB(88, 130, 255)
+			}):Play()
+			btnData.Status.Text = "ACTIVE"
+			btnData.Status.TextColor3 = Color3.fromRGB(110, 155, 255)
+		end
+		track.Stopped:Connect(function()
+			if activeIndex == index then
+				stopCurrentEmote()
+			end
+		end)
+	else
+		warn("Failed to load animation ID: " .. tostring(emoteData.AnimationId))
+	end
+end
+-- ==========================================
+-- BUILD SHARP 12-SLOT UI (NO ROUNDED CORNERS)
+-- ==========================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SharpEmoteUI8"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = player:WaitForChild("PlayerGui")
+-- Main Card
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 270, 0, 360)
+mainFrame.Position = UDim2.new(1, -290, 0.5, -180)
+mainFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+-- Outer Rim (White, Sharp)
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Color = Color3.fromRGB(255, 255, 255)
+mainStroke.Thickness = 1.5
+mainStroke.Parent = mainFrame
+-- Draggable Header
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 40)
+header.BackgroundColor3 = Color3.fromRGB(23, 26, 32)
+header.BorderSizePixel = 0
+header.Parent = mainFrame
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -60, 1, 0)
+title.Position = UDim2.new(0, 14, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "EMOTES (12)"
+title.TextColor3 = Color3.fromRGB(240, 244, 250)
+title.Font = Enum.Font.SciFi
+title.TextSize = 14
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = header
+local keyHint = Instance.new("TextLabel")
+keyHint.Size = UDim2.new(0, 42, 0, 20)
+keyHint.Position = UDim2.new(1, -52, 0.5, -10)
+keyHint.BackgroundColor3 = Color3.fromRGB(34, 38, 48)
+keyHint.Text = "[G]"
+keyHint.TextColor3 = Color3.fromRGB(150, 160, 175)
+keyHint.Font = Enum.Font.GothamBold
+keyHint.TextSize = 11
+keyHint.Parent = header
+-- Dragging Support
+local dragging, dragInput, dragStart, startPos
+header.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+header.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+-- Scrollable Emote Buttons Container
+local listFrame = Instance.new("ScrollingFrame")
+listFrame.Size = UDim2.new(1, -20, 0, 250)
+listFrame.Position = UDim2.new(0, 10, 0, 48)
+listFrame.BackgroundTransparency = 1
+listFrame.BorderSizePixel = 0
+listFrame.CanvasSize = UDim2.new(0, 0, 0, 12 * 52)
+listFrame.ScrollBarThickness = 3
+listFrame.Parent = mainFrame
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 6)
+layout.Parent = listFrame
+for i, emote in ipairs(EMOTES) do
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, -4, 0, 46)
+	btn.BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+	btn.AutoButtonColor = false
+	btn.Text = ""
+	btn.Parent = listFrame
+	-- Inner Rim (Black, Sharp)
+	local btnStroke = Instance.new("UIStroke")
+	btnStroke.Color = Color3.fromRGB(0, 0, 0)
+	btnStroke.Thickness = 1.5
+	btnStroke.Parent = btn
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(0.65, 0, 1, 0)
+	nameLbl.Position = UDim2.new(0, 12, 0, 0)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = emote.Name
+	nameLbl.TextColor3 = Color3.fromRGB(235, 240, 248)
+	nameLbl.Font = Enum.Font.GothamBold
+	nameLbl.TextSize = 13
+	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+	nameLbl.Parent = btn
+	local statusLbl = Instance.new("TextLabel")
+	statusLbl.Size = UDim2.new(0.3, -12, 1, 0)
+	statusLbl.Position = UDim2.new(0.7, 0, 0, 0)
+	statusLbl.BackgroundTransparency = 1
+	statusLbl.Text = "PLAY"
+	statusLbl.TextColor3 = Color3.fromRGB(135, 145, 160)
+	statusLbl.Font = Enum.Font.SciFi
+	statusLbl.TextSize = 11
+	statusLbl.TextXAlignment = Enum.TextXAlignment.Right
+	statusLbl.Parent = btn
+	-- Hover effect
+	btn.MouseEnter:Connect(function()
+		if activeIndex ~= i then
+			TweenService:Create(btn, TweenInfo.new(0.15), {
+				BackgroundColor3 = Color3.fromRGB(35, 39, 48)
+			}):Play()
+		end
+	end)
+	btn.MouseLeave:Connect(function()
+		if activeIndex ~= i then
+			TweenService:Create(btn, TweenInfo.new(0.15), {
+				BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+			}):Play()
+		end
+	end)
+	btn.MouseButton1Click:Connect(function()
+		toggleEmote(i)
+	end)
+	uiButtons[i] = {
+		Button = btn,
+		Stroke = btnStroke,
+		Status = statusLbl
+	}
+end
+-- Bottom Controls Row (Speed + Stop + Fly)
+local bottomRow = Instance.new("Frame")
+bottomRow.Size = UDim2.new(1, -24, 0, 36)
+bottomRow.Position = UDim2.new(0, 12, 1, -44)
+bottomRow.BackgroundTransparency = 1
+bottomRow.Parent = mainFrame
+
+local speedBox = Instance.new("TextBox")
+speedBox.Size = UDim2.new(0.31, 0, 1, 0)
+speedBox.BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+speedBox.Text = "1.0"
+speedBox.PlaceholderText = "Speed"
+speedBox.TextColor3 = Color3.fromRGB(200, 210, 225)
+speedBox.PlaceholderColor3 = Color3.fromRGB(110, 115, 125)
+speedBox.Font = Enum.Font.GothamBold
+speedBox.TextSize = 12
+speedBox.ClearTextOnFocus = false
+speedBox.Parent = bottomRow
+
+local speedStroke = Instance.new("UIStroke")
+speedStroke.Color = Color3.fromRGB(0, 0, 0)
+speedStroke.Thickness = 1.2
+speedStroke.Parent = speedBox
+
+-- STOP BUTTON
+local stopBtn = Instance.new("TextButton")
+stopBtn.Size = UDim2.new(0.31, 0, 1, 0)
+stopBtn.Position = UDim2.new(0.345, 0, 0, 0)
+stopBtn.BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+stopBtn.Text = "STOP"
+stopBtn.TextColor3 = Color3.fromRGB(200, 210, 225)
+stopBtn.Font = Enum.Font.GothamBold
+stopBtn.TextSize = 12
+stopBtn.AutoButtonColor = false
+stopBtn.Parent = bottomRow
+
+local stopStroke = Instance.new("UIStroke")
+stopStroke.Color = Color3.fromRGB(0, 0, 0)
+stopStroke.Thickness = 1.2
+stopStroke.Parent = stopBtn
+
+-- FLY BUTTON (opens fly GUI)
+local flyBtn = Instance.new("TextButton")
+flyBtn.Size = UDim2.new(0.31, 0, 1, 0)
+flyBtn.Position = UDim2.new(0.69, 0, 0, 0)
+flyBtn.BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+flyBtn.Text = "FLY"
+flyBtn.TextColor3 = Color3.fromRGB(200, 210, 225)
+flyBtn.Font = Enum.Font.GothamBold
+flyBtn.TextSize = 12
+flyBtn.AutoButtonColor = false
+flyBtn.Parent = bottomRow
+
+local flyStroke = Instance.new("UIStroke")
+flyStroke.Color = Color3.fromRGB(0, 0, 0)
+flyStroke.Thickness = 1.2
+flyStroke.Parent = flyBtn
+
+-- Make speed box actually work
+speedBox.FocusLost:Connect(function()
+	local num = tonumber(speedBox.Text)
+	if num and num > 0 then
+		playbackSpeed = num
+		if currentTrack then
+			currentTrack:AdjustSpeed(playbackSpeed)
+		end
+	else
+		speedBox.Text = tostring(playbackSpeed)
+	end
+end)
+
+-- Stop button functionality
+stopBtn.MouseButton1Click:Connect(function()
+	stopCurrentEmote()
+end)
+
+-- Hover effects
+stopBtn.MouseEnter:Connect(function()
+	TweenService:Create(stopBtn, TweenInfo.new(0.15), {
+		BackgroundColor3 = Color3.fromRGB(45, 30, 30)
+	}):Play()
+end)
+stopBtn.MouseLeave:Connect(function()
+	TweenService:Create(stopBtn, TweenInfo.new(0.15), {
+		BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+	}):Play()
+end)
+
+flyBtn.MouseEnter:Connect(function()
+	TweenService:Create(flyBtn, TweenInfo.new(0.15), {
+		BackgroundColor3 = Color3.fromRGB(30, 40, 55)
+	}):Play()
+end)
+flyBtn.MouseLeave:Connect(function()
+	TweenService:Create(flyBtn, TweenInfo.new(0.15), {
+		BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+	}):Play()
+end)
+
+-- ==========================================
+-- FLY GUI + FLY SCRIPT
+-- ==========================================
+local flyGui = Instance.new("ScreenGui")
+flyGui.Name = "FlyGui"
+flyGui.ResetOnSpawn = false
+flyGui.Enabled = false
+flyGui.Parent = player:WaitForChild("PlayerGui")
+
+local flyFrame = Instance.new("Frame")
+flyFrame.Size = UDim2.new(0, 220, 0, 160)
+flyFrame.Position = UDim2.new(0.5, -110, 0.5, -80)
+flyFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 25)
+flyFrame.BorderSizePixel = 0
+flyFrame.Parent = flyGui
+
+local flyMainStroke = Instance.new("UIStroke")
+flyMainStroke.Color = Color3.fromRGB(255, 255, 255)
+flyMainStroke.Thickness = 1.5
+flyMainStroke.Parent = flyFrame
+
+local flyHeader = Instance.new("Frame")
+flyHeader.Size = UDim2.new(1, 0, 0, 36)
+flyHeader.BackgroundColor3 = Color3.fromRGB(23, 26, 32)
+flyHeader.BorderSizePixel = 0
+flyHeader.Parent = flyFrame
+
+local flyTitle = Instance.new("TextLabel")
+flyTitle.Size = UDim2.new(1, -40, 1, 0)
+flyTitle.Position = UDim2.new(0, 12, 0, 0)
+flyTitle.BackgroundTransparency = 1
+flyTitle.Text = "FLY"
+flyTitle.TextColor3 = Color3.fromRGB(240, 244, 250)
+flyTitle.Font = Enum.Font.SciFi
+flyTitle.TextSize = 14
+flyTitle.TextXAlignment = Enum.TextXAlignment.Left
+flyTitle.Parent = flyHeader
+
+local closeFlyBtn = Instance.new("TextButton")
+closeFlyBtn.Size = UDim2.new(0, 28, 0, 28)
+closeFlyBtn.Position = UDim2.new(1, -34, 0.5, -14)
+closeFlyBtn.BackgroundColor3 = Color3.fromRGB(40, 30, 30)
+closeFlyBtn.Text = "X"
+closeFlyBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+closeFlyBtn.Font = Enum.Font.GothamBold
+closeFlyBtn.TextSize = 14
+closeFlyBtn.AutoButtonColor = false
+closeFlyBtn.Parent = flyHeader
+
+local closeStroke = Instance.new("UIStroke")
+closeStroke.Color = Color3.fromRGB(0, 0, 0)
+closeStroke.Thickness = 1.2
+closeStroke.Parent = closeFlyBtn
+
+-- Fly Toggle Button
+local toggleFlyBtn = Instance.new("TextButton")
+toggleFlyBtn.Size = UDim2.new(1, -24, 0, 36)
+toggleFlyBtn.Position = UDim2.new(0, 12, 0, 50)
+toggleFlyBtn.BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+toggleFlyBtn.Text = "ENABLE FLY"
+toggleFlyBtn.TextColor3 = Color3.fromRGB(200, 210, 225)
+toggleFlyBtn.Font = Enum.Font.GothamBold
+toggleFlyBtn.TextSize = 13
+toggleFlyBtn.AutoButtonColor = false
+toggleFlyBtn.Parent = flyFrame
+
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = Color3.fromRGB(0, 0, 0)
+toggleStroke.Thickness = 1.2
+toggleStroke.Parent = toggleFlyBtn
+
+-- Fly Speed Box
+local flySpeedBox = Instance.new("TextBox")
+flySpeedBox.Size = UDim2.new(1, -24, 0, 32)
+flySpeedBox.Position = UDim2.new(0, 12, 0, 100)
+flySpeedBox.BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+flySpeedBox.Text = "50"
+flySpeedBox.PlaceholderText = "Fly Speed"
+flySpeedBox.TextColor3 = Color3.fromRGB(200, 210, 225)
+flySpeedBox.PlaceholderColor3 = Color3.fromRGB(110, 115, 125)
+flySpeedBox.Font = Enum.Font.GothamBold
+flySpeedBox.TextSize = 13
+flySpeedBox.ClearTextOnFocus = false
+flySpeedBox.Parent = flyFrame
+
+local flySpeedStroke = Instance.new("UIStroke")
+flySpeedStroke.Color = Color3.fromRGB(0, 0, 0)
+flySpeedStroke.Thickness = 1.2
+flySpeedStroke.Parent = flySpeedBox
+
+-- Fly Logic
+local flying = false
+local flySpeed = 50
+local bodyVel = nil
+local bodyGyro = nil
+
+local function startFlying()
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+	if not hrp or not humanoid then return end
+
+	humanoid.PlatformStand = true
+
+	bodyVel = Instance.new("BodyVelocity")
+	bodyVel.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	bodyVel.Velocity = Vector3.zero
+	bodyVel.Parent = hrp
+
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	bodyGyro.P = 9e4
+	bodyGyro.Parent = hrp
+
+	flying = true
+	toggleFlyBtn.Text = "DISABLE FLY"
+	toggleFlyBtn.BackgroundColor3 = Color3.fromRGB(40, 55, 40)
+end
+
+local function stopFlying()
+	flying = false
+	if bodyVel then bodyVel:Destroy() bodyVel = nil end
+	if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+
+	local char = player.Character
+	local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.PlatformStand = false
+	end
+
+	toggleFlyBtn.Text = "ENABLE FLY"
+	toggleFlyBtn.BackgroundColor3 = Color3.fromRGB(28, 31, 38)
+end
+
+toggleFlyBtn.MouseButton1Click:Connect(function()
+	if flying then
+		stopFlying()
+	else
+		startFlying()
+	end
+end)
+
+flySpeedBox.FocusLost:Connect(function()
+	local num = tonumber(flySpeedBox.Text)
+	if num and num > 0 then
+		flySpeed = num
+	else
+		flySpeedBox.Text = tostring(flySpeed)
+	end
+end)
+
+closeFlyBtn.MouseButton1Click:Connect(function()
+	flyGui.Enabled = false
+end)
+
+-- Open/Close fly GUI from main button
+flyBtn.MouseButton1Click:Connect(function()
+	flyGui.Enabled = not flyGui.Enabled
+end)
+
+-- Actual flying movement
+RunService.RenderStepped:Connect(function()
+	if not flying then return end
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local cam = workspace.CurrentCamera
+	if not hrp or not cam or not bodyVel or not bodyGyro then return end
+
+	local dir = Vector3.zero
+	if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+	if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+	if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+	if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+	if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+	if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+		dir = dir - Vector3.new(0, 1, 0)
+	end
+
+	if dir.Magnitude > 0 then
+		dir = dir.Unit * flySpeed
+	end
+
+	bodyVel.Velocity = dir
+	bodyGyro.CFrame = cam.CFrame
+end)
+
+-- Clean up fly if character dies/resets
+player.CharacterAdded:Connect(function()
+	if flying then
+		stopFlying()
+	end
+end)
