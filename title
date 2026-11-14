@@ -1,0 +1,98 @@
+-- Title GUI (self-contained)
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "title"
+screenGui.ResetOnSpawn = true
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+----------------------------------------------------------------
+-- Main Title
+----------------------------------------------------------------
+local title = Instance.new("TextLabel")
+title.Name = "TextLabel"
+title.AnchorPoint = Vector2.new(0.5, 0.5)
+title.Position = UDim2.new(0.482, 0, -0.003, 30)
+title.Size = UDim2.new(0.464, 0, 0, 25)
+title.BackgroundTransparency = 1
+title.Text = '"Fun" Combat - Version 1.1'
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextStrokeColor3 = Color3.new(0, 0, 0)
+title.TextStrokeTransparency = 0.55
+title.TextScaled = true
+title.FontFace = Font.new("rbxassetid://12187370928", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+title.Rotation = 5
+title.ZIndex = 4
+title.Parent = screenGui
+
+----------------------------------------------------------------
+-- "Made by" label
+----------------------------------------------------------------
+local dis = Instance.new("TextLabel")
+dis.Name = "dis"
+dis.AnchorPoint = Vector2.new(0.5, 0.5)
+dis.Position = UDim2.new(0.5, 0, 0, 55)
+dis.Size = UDim2.new(0.5, 0, 0, 25)
+dis.BackgroundTransparency = 1
+dis.Text = "Made by Rx and Riuk :3"
+dis.TextColor3 = Color3.fromRGB(233, 134, 255)
+dis.TextStrokeColor3 = Color3.new(0, 0, 0)
+dis.TextStrokeTransparency = 0.55
+dis.TextSize = 20
+dis.FontFace = Font.new("rbxassetid://12187370928", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+dis.Rotation = 5
+dis.ZIndex = 4
+dis.Parent = screenGui
+
+----------------------------------------------------------------
+-- Discord link
+----------------------------------------------------------------
+local disc = Instance.new("TextLabel")
+disc.Name = "disc"
+disc.AnchorPoint = Vector2.new(0.5, 0.5)
+disc.Position = UDim2.new(0.5, 0, 0.029, 55)
+disc.Size = UDim2.new(0.5, 0, 0, 25)
+disc.BackgroundTransparency = 1
+disc.Text = ".gg/zJ3AfQNEHG"
+disc.TextColor3 = Color3.fromRGB(233, 134, 255)
+disc.TextStrokeColor3 = Color3.new(0, 0, 0)
+disc.TextStrokeTransparency = 0.55
+disc.TextScaled = true
+disc.FontFace = Font.new("rbxassetid://12187370928", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+disc.Rotation = 5
+disc.ZIndex = 4
+disc.Parent = screenGui
+
+----------------------------------------------------------------
+-- Animation (same as original)
+----------------------------------------------------------------
+local ti  = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+local ti2 = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+
+-- Position tweens (bob up and down)
+local t1 = TweenService:Create(title, ti, {Position = UDim2.new(0.5, 0, 0, 50)})
+local t3 = TweenService:Create(dis,   ti, {Position = UDim2.new(0.5, 0, 0, 75)})
+local t5 = TweenService:Create(disc,  ti, {Position = UDim2.new(0.5, 0, 0, 100)})
+
+-- Rotation tweens (tilt back and forth)
+local t2 = TweenService:Create(title, ti2, {Rotation = -5})
+local t4 = TweenService:Create(dis,   ti2, {Rotation = -5})
+local t6 = TweenService:Create(disc,  ti2, {Rotation = -5})
+
+t1:Play()
+t3:Play()
+t5:Play()
+
+task.wait(0.3)
+
+t2:Play()
+t4:Play()
+t6:Play()
+
+print("[title] GUI loaded and animating")
