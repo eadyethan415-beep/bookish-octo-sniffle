@@ -1,0 +1,117 @@
+-- HitboxToggle (LocalScript only)
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "HitboxToggle"
+screenGui.ResetOnSpawn = true
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+-- Toggle value
+local toggleValue = Instance.new("BoolValue")
+toggleValue.Name = "Toggle"
+toggleValue.Value = false
+toggleValue.Parent = screenGui
+
+----------------------------------------------------------------
+-- Button
+----------------------------------------------------------------
+local button = Instance.new("TextButton")
+button.Name = "TextButton"
+button.Position = UDim2.new(1, -150, 0.65, 0)
+button.Size = UDim2.new(0, 125, 0.1, 0)
+button.BackgroundColor3 = Color3.new(1, 1, 1)
+button.BackgroundTransparency = 0.6
+button.BorderSizePixel = 0
+button.Rotation = -4
+button.Text = ""
+button.AutoButtonColor = true
+button.Parent = screenGui
+
+-- Gradient
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(141, 17, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+}
+gradient.Rotation = 45
+gradient.Parent = button
+
+-- Outer purple stroke
+local outerStroke = Instance.new("UIStroke")
+outerStroke.Color = Color3.fromRGB(176, 91, 252)
+outerStroke.Thickness = 1
+outerStroke.Parent = button
+
+-- Inner frame (black outline + corner)
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromScale(1, 1)
+frame.BackgroundTransparency = 1
+frame.Parent = button
+
+local innerStroke = Instance.new("UIStroke")
+innerStroke.Color = Color3.new(0, 0, 0)
+innerStroke.Thickness = 1
+innerStroke.Parent = frame
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0.08, 0)
+corner.Parent = frame
+
+-- Text
+local label = Instance.new("TextLabel")
+label.Name = "TextLabel"
+label.Size = UDim2.fromScale(1, 1)
+label.BackgroundTransparency = 1
+label.Text = "Hitboxes: Off"
+label.TextColor3 = Color3.new(1, 1, 1)
+label.TextStrokeColor3 = Color3.fromRGB(151, 74, 255)
+label.TextStrokeTransparency = 0
+label.TextSize = 20
+label.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Bold, Enum.FontStyle.Italic)
+label.Parent = button
+
+-- Press sound
+local pressSound = Instance.new("Sound")
+pressSound.Name = "Press"
+pressSound.SoundId = "rbxassetid://4601634016"
+pressSound.Volume = 1
+pressSound.Parent = button
+
+----------------------------------------------------------------
+-- Click logic
+----------------------------------------------------------------
+button.MouseButton1Click:Connect(function()
+	toggleValue.Value = not toggleValue.Value
+	pressSound:Play()
+
+	if toggleValue.Value then
+		label.Text = "Hitboxes: On"
+	else
+		label.Text = "Hitboxes: Off"
+	end
+end)
+
+----------------------------------------------------------------
+-- Idle animation (bob + tilt)
+----------------------------------------------------------------
+local vertTi = TweenInfo.new(1.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+local horTi  = TweenInfo.new(1.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+
+local vertT = TweenService:Create(button, vertTi, {
+	Position = UDim2.new(1, -150, 0.75, 0)
+})
+local horT = TweenService:Create(button, horTi, {
+	Rotation = 4
+})
+
+vertT:Play()
+task.wait(0.6)
+horT:Play()
+
+print("[HitboxToggle] GUI loaded")
