@@ -1,0 +1,316 @@
+-- Full "meter" GUI + logic (self-contained)
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "meter"
+screenGui.ResetOnSpawn = true
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+----------------------------------------------------------------
+-- Main tilted frame
+----------------------------------------------------------------
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "Frame"
+mainFrame.AnchorPoint = Vector2.new(0, 0.5)
+mainFrame.Position = UDim2.new(0.015, 30, 0.474, 0)
+mainFrame.Size = UDim2.new(0, 75, 0.5, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(212, 144, 255)
+mainFrame.BackgroundTransparency = 0.6
+mainFrame.BorderSizePixel = 0
+mainFrame.Rotation = 3
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.new(0, 0, 0)
+stroke.Thickness = 1
+stroke.Parent = mainFrame
+
+local grad = Instance.new("UIGradient")
+grad.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(141, 17, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+}
+grad.Rotation = 45
+grad.Parent = mainFrame
+
+----------------------------------------------------------------
+-- Container + bar
+----------------------------------------------------------------
+local container = Instance.new("Frame")
+container.Name = "container"
+container.AnchorPoint = Vector2.new(0.5, 0)
+container.Position = UDim2.new(0.5, 0, 0, 40)
+container.Size = UDim2.new(0, 50, 1, -80)
+container.BackgroundTransparency = 1
+container.Parent = mainFrame
+
+-- Empty background
+local empty = Instance.new("Frame")
+empty.Name = "empty"
+empty.AnchorPoint = Vector2.new(0.5, 0)
+empty.Position = UDim2.new(0.5, 0, 0, 0)
+empty.Size = UDim2.new(0, 50, 1, 0)
+empty.BackgroundColor3 = Color3.fromRGB(72, 0, 130)
+empty.BorderSizePixel = 0
+empty.Parent = container
+
+local emptyCorner = Instance.new("UICorner")
+emptyCorner.CornerRadius = UDim.new(0, 8)
+emptyCorner.Parent = empty
+
+local emptyGrad = Instance.new("UIGradient")
+emptyGrad.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 105, 238)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(122, 49, 144)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+}
+emptyGrad.Rotation = 60
+emptyGrad.Parent = empty
+
+-- Fill bar
+local bar = Instance.new("Frame")
+bar.Name = "bar"
+bar.AnchorPoint = Vector2.new(0.5, 0)
+bar.Position = UDim2.new(0.5, 0, 0, 0)
+bar.Size = UDim2.new(1, 0, 0, 0) -- starts empty
+bar.BackgroundColor3 = Color3.new(1, 1, 1)
+bar.BorderSizePixel = 0
+bar.ZIndex = 2
+bar.Parent = container
+
+local barGrad = Instance.new("UIGradient")
+barGrad.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(211, 210, 211)),
+	ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1))
+}
+barGrad.Rotation = 45
+barGrad.Parent = bar
+
+----------------------------------------------------------------
+-- "CLIMAX" label
+----------------------------------------------------------------
+local climaxLabel = Instance.new("TextLabel")
+climaxLabel.Name = "TextLabel"
+climaxLabel.Size = UDim2.new(1.52, 0, 0.31, 0)
+climaxLabel.Position = UDim2.new(-0.286, 0, -0.093, 0)
+climaxLabel.BackgroundTransparency = 1
+climaxLabel.Text = "CLIMAX"
+climaxLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Bold, Enum.FontStyle.Italic)
+climaxLabel.TextSize = 20
+climaxLabel.TextColor3 = Color3.new(1, 1, 1)
+climaxLabel.TextStrokeTransparency = 1
+climaxLabel.Parent = mainFrame
+
+local climaxStroke = Instance.new("UIStroke")
+climaxStroke.Color = Color3.fromRGB(142, 79, 223)
+climaxStroke.Thickness = 1
+climaxStroke.Parent = climaxLabel
+
+----------------------------------------------------------------
+-- Prompt label ("R - Faster")
+----------------------------------------------------------------
+local promptLabel = Instance.new("TextLabel")
+promptLabel.Name = "TextLabel"
+promptLabel.AnchorPoint = Vector2.new(0, 0.5)
+promptLabel.Position = UDim2.new(0, 30, 0.85, 0)
+promptLabel.Size = UDim2.new(0, 200, 0, 100)
+promptLabel.BackgroundTransparency = 1
+promptLabel.Text = "R - Faster"
+promptLabel.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Bold, Enum.FontStyle.Italic)
+promptLabel.TextScaled = true
+promptLabel.TextColor3 = Color3.new(1, 1, 1)
+promptLabel.TextStrokeColor3 = Color3.fromRGB(120, 5, 255)
+promptLabel.TextStrokeTransparency = 1
+promptLabel.TextTransparency = 1
+promptLabel.Visible = false
+promptLabel.Rotation = -10
+promptLabel.Parent = screenGui
+
+local promptImg = Instance.new("ImageLabel")
+promptImg.Name = "ImageLabel"
+promptImg.Position = UDim2.new(-0.51, 0, -0.94, 0)
+promptImg.Size = UDim2.new(0, 400, 0, 300)
+promptImg.BackgroundTransparency = 1
+promptImg.Image = "rbxassetid://13851504868"
+promptImg.ImageTransparency = 1
+promptImg.ZIndex = 0
+promptImg.Parent = promptLabel
+
+----------------------------------------------------------------
+-- White flash
+----------------------------------------------------------------
+local white = Instance.new("ImageLabel")
+white.Name = "white"
+white.Size = UDim2.new(0.533, 0, 0.948, 0)
+white.Position = UDim2.new(0, 0, 0, 0)
+white.BackgroundTransparency = 1
+white.Image = "rbxassetid://4764912210"
+white.ImageTransparency = 1
+white.ZIndex = -500
+white.Visible = false
+white.Parent = screenGui
+
+-- (simplified corners – you can expand later if needed)
+
+----------------------------------------------------------------
+-- Sound
+----------------------------------------------------------------
+local heartbeat = Instance.new("Sound")
+heartbeat.Name = "Heartbeat"
+heartbeat.SoundId = "rbxassetid://176554627"
+heartbeat.Volume = 3
+heartbeat.Parent = screenGui
+
+----------------------------------------------------------------
+-- Logic
+----------------------------------------------------------------
+local character = player.Character or player.CharacterAdded:Wait()
+local camera = workspace.CurrentCamera
+
+local barTweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local promptTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local flashTweenInfo = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+
+local toggle = false
+local prevMeter = 0
+local funState = 1
+local newMeter = 0
+
+local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+local changeFunSpeed = remotes and remotes:FindFirstChild("ChangeFunSpeed")
+local showPromptRemote = remotes and remotes:FindFirstChild("ShowPrompt")
+
+local function showPromptText(text)
+	promptLabel.Visible = true
+	promptLabel.Text = text
+	toggle = true
+
+	TweenService:Create(promptLabel, promptTweenInfo, {TextTransparency = 0}):Play()
+	TweenService:Create(promptLabel, promptTweenInfo, {TextStrokeTransparency = 0}):Play()
+	TweenService:Create(promptImg, promptTweenInfo, {ImageTransparency = 0.6}):Play()
+end
+
+local function hidePromptText()
+	toggle = false
+	TweenService:Create(promptLabel, promptTweenInfo, {TextTransparency = 1}):Play()
+	TweenService:Create(promptLabel, promptTweenInfo, {TextStrokeTransparency = 1}):Play()
+	TweenService:Create(promptImg, promptTweenInfo, {ImageTransparency = 1}):Play()
+	task.delay(0.45, function()
+		promptLabel.Visible = false
+	end)
+end
+
+local function theFunny(doFlash)
+	hidePromptText()
+
+	local originalFOV = camera.FieldOfView
+	camera.FieldOfView = originalFOV + 20
+	TweenService:Create(camera, promptTweenInfo, {FieldOfView = originalFOV}):Play()
+
+	heartbeat:Play()
+
+	if doFlash then
+		white.Visible = true
+		white.ImageTransparency = 0
+		local t = TweenService:Create(white, flashTweenInfo, {ImageTransparency = 1})
+		t:Play()
+		t.Completed:Wait()
+		white.Visible = false
+	end
+end
+
+local function onRelease()
+	if not toggle then return end
+
+	if newMeter >= 1 then
+		theFunny(true)
+		task.delay(3, function() theFunny(true) end)
+	else
+		theFunny(false)
+	end
+
+	if changeFunSpeed then
+		changeFunSpeed:FireServer(funState)
+	end
+
+	if funState == 4 then
+		funState = 1
+	end
+end
+
+-- Bar update
+character:GetAttributeChangedSignal("funMeter"):Connect(function()
+	newMeter = character:GetAttribute("funMeter") or 0
+
+	TweenService:Create(bar, barTweenInfo, {
+		Size = UDim2.new(1, 0, newMeter, 0)
+	}):Play()
+
+	if character:GetAttribute("doing") then
+		local prevR = math.round(prevMeter * 100)
+		if newMeter >= 1 and prevR == 98 then
+			showPromptText("R - RELEASE")
+			funState += 1
+		elseif newMeter >= 0.6 and prevR == 60 then
+			showPromptText("R - Faster")
+			funState += 1
+		elseif newMeter >= 0.26 and prevR == 26 then
+			showPromptText("R - Faster")
+			funState += 1
+		end
+	else
+		hidePromptText()
+	end
+
+	funState = math.clamp(funState, 1, 4)
+	prevMeter = newMeter
+end)
+
+character:GetAttributeChangedSignal("doing"):Connect(function()
+	if not character:GetAttribute("doing") then
+		hidePromptText()
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.R then
+		onRelease()
+	end
+end)
+
+-- Idle bob + rotate
+TweenService:Create(mainFrame, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+	Position = UDim2.new(0, 30, 0.55, 0)
+}):Play()
+
+task.wait(0.6)
+TweenService:Create(mainFrame, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+	Rotation = -3
+}):Play()
+
+-- Shake the prompt text
+task.spawn(function()
+	while true do
+		if promptLabel.Visible then
+			promptLabel.Position = UDim2.new(0, 30 + math.random(-8, 8), 0.85, math.random(-6, 6))
+			promptImg.Position = UDim2.new(-0.51 + math.random(-5, 5)/100, 0, -0.94 + math.random(-5, 5)/100, 0)
+		end
+		task.wait(0.05)
+	end
+end)
+
+print("[meter] GUI loaded successfully")
